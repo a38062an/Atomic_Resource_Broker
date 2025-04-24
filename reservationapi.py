@@ -76,8 +76,6 @@ class ReservationApi:
 
         url = urljoin(self.base_url, endpoint)  # Use urljoin to properly combine URLs
         # Attempt to perform the request, retrying if necessary
-        print(url)
-
         for attempt in range(self.retries):
             try:
                 headers = self._headers()
