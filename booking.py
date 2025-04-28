@@ -287,7 +287,7 @@ def reserveEarliestSlot():
 
                 # Clean up any remaining unmatched slots
                 enforce_rate_limit()
-                cancel_all_unmatched_slots()
+                cancelAllUnmatchedSlots()
                 return True
             else:
                 # Rollback any partial reservation we just made
@@ -318,9 +318,11 @@ def reserveEarliestSlot():
     return False
 
 
-def cancel_all_unmatched_slots():
+def cancelAllUnmatchedSlots():
     """
-    Cancel all slots that don't have a matching pair
+    Cancel all slots that don't have a matching pair and also cancel any matching pairs
+    that are later than the earliest matching pair
+    Function for removing uneeded reservation there are three cases below
     """
     try:
         held_hotel, held_band = viewCurrentSlots()
@@ -348,10 +350,28 @@ def cancel_all_unmatched_slots():
             enforce_rate_limit()
             band.release_slot(slot_id)
 
+        # If we have more than one matching pair, keep only the earliest one
+        if len(matching_slots) > 1:
+            # Find the earliest matching slot
+            earliest_slot = min(matching_slots)
+
+            # Cancel all other matching slots (keep only the earliest)
+            slots_to_cancel = matching_slots - {earliest_slot}
+
+            for slot_id in slots_to_cancel:
+                print(f"Cancelling later matching pair at slot {slot_id}")
+                enforce_rate_limit()
+                hotel.release_slot(slot_id)
+                enforce_rate_limit()
+                band.release_slot(slot_id)
+
+            print(f"Kept earliest matching pair at slot {earliest_slot}")
+
         print("Unmatched slots cleanup completed")
 
     except Exception as e:
         print(f"Error cancelling unmatched slots: {e}")
+
 
 def cancelSlot(num: int, service_type=None):
     """
@@ -482,7 +502,7 @@ class BookingSystem:
     def __init__(self, root: tk.Tk):
         self.root = root
         self.root.title("Booking System")
-        self.root.geometry("600x500")
+        self.root.geometry("650x500")
         self.root.resizable(False, False)
 
         # Dictionary to store button references - Define this BEFORE createButtons
@@ -547,7 +567,7 @@ class BookingSystem:
     def createOutputArea(self):
         # Create scrolled text widget for output
         self.output_text = scrolledtext.ScrolledText(self.output_frame, wrap=tk.WORD,
-                                                     width=50, height=25)
+                                                     width=60, height=25)
         self.output_text.pack(fill=tk.BOTH, expand=True)
         self.output_text.config(state=tk.DISABLED) # unmodifiable
 
@@ -846,7 +866,7 @@ class BookingSystem:
         self.startLoading("Cancelling unneeded reservations")
 
         def perform_task():
-            cancel_all_unmatched_slots()  # Use the existing function
+            cancelAllUnmatchedSlots()  # Use the existing function
             self.root.after(0, self.displayCancelUnneededResults)
 
         threading.Thread(target=perform_task, daemon=True).start()
