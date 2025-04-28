@@ -33,10 +33,13 @@ class ReservationApi:
             retries: The maximum number of attempts to make for each request.
             delay: A delay to apply to each request to prevent server overload.
         """
+        self.cache_duration = 60  # Cache duration in seconds
         self.base_url = base_url
         self.token    = token
         self.retries  = retries
         self.delay    = delay
+        self.cache_duration = self.cache_duration
+        self.cache = {}  # Dictionary to store cached responses
 
     def _reason(self, req: requests.Response) -> str:
         """Obtain the reason associated with a response"""
@@ -155,6 +158,21 @@ class ReservationApi:
         # Get here and retries have been exhausted, throw an appropriate
         # exception.
 
+    def _get_from_cache(self, key: str):
+        """Retrieve a value from the cache if it is still valid."""
+        if key in self.cache:
+            cached_value, timestamp = self.cache[key]
+            if time.time() - timestamp < self.cache_duration:
+                return cached_value
+        return None
+
+    def _set_cache(self, key: str, value):
+        """Store a value in the cache with the current timestamp."""
+        self.cache[key] = (value, time.time())
+
+    def clear_cache(self):
+        """Clear the entire cache."""
+        self.cache = {}
 
     def get_slots_available(self):
         """Obtain the list of slots currently available in the system"""
@@ -163,18 +181,24 @@ class ReservationApi:
         return response
 
     def get_slots_held(self):
-        """Obtain the list of slots currently held by the client"""
-        # Your code goes here
-        response = self._send_request('GET', f"reservation")
+        """Obtain the list of slots currently held by the client."""
+        cache_key = "slots_held"
+        cached_response = self._get_from_cache(cache_key)
+        if cached_response is not None:
+            return cached_response
+
+        response = self._send_request('GET', 'reservation')
+        self._set_cache(cache_key, response)
         return response
 
     def release_slot(self, slot_id):
-        """Release a slot currently held by the client"""
-        # Your code goes here
+        """Release a slot currently held by the client."""
         response = self._send_request('DELETE', f"reservation/{slot_id}")
+        self.clear_cache()  # Invalidate cache after releasing a slot
+        return response
 
     def reserve_slot(self, slot_id):
-        """Attempt to reserve a slot for the client"""
-        # Your code goes here
+        """Attempt to reserve a slot for the client."""
         response = self._send_request('POST', f"reservation/{slot_id}")
+        self.clear_cache()  # Invalidate cache after reserving a slot
         return response
