@@ -502,7 +502,7 @@ class BookingSystem:
     def __init__(self, root: tk.Tk):
         self.root = root
         self.root.title("Booking System")
-        self.root.geometry("650x500")
+        self.root.geometry("800x600")
         self.root.resizable(False, False)
 
         # Dictionary to store button references - Define this BEFORE createButtons
