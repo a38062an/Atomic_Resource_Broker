@@ -1,93 +1,91 @@
-# COMP28112-Wedding-Planner_a38062an
+COMP28112: Atomic Resource Broker Client - Wedding Planner
 
+Project Overview
+This project implements a robust, multi-threaded client application in Python for managing critical resource reservations across two independent external REST APIs (simulating Hotel and Band services). The core technical focus is on client reliability, ensuring data consistency using atomic rollback logic, and maintaining a responsive User Interface (UI) despite external rate limits.
 
+The solution utilizes an object-oriented API wrapper and a custom Tkinter GUI to demonstrate non-blocking, asynchronous handling of remote transactions.
 
-## Getting started
+Core Technical Features
+Feature
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+Implementation
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+Key Benefits
 
-## Add your files
+Atomic Rollback Logic
 
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
+Implemented within reserveSlot function (in booking.py). If a reservation succeeds on one API (e.g., Hotel) but fails on the other (e.g., Band), the first successful transaction is immediately canceled (released) to guarantee the system remains in a consistent state (ACID principle).
 
-```
-cd existing_repo
-git remote add origin https://gitlab.cs.man.ac.uk/a38062an/comp28112-wedding-planner_a38062an.git
-git branch -M main
-git push -uf origin main
-```
+Guarantees cross-service data integrity; prevents partial, orphaned reservations.
 
-## Integrate with your tools
+Rate Limiting
 
-- [ ] [Set up project integrations](https://gitlab.cs.man.ac.uk/a38062an/comp28112-wedding-planner_a38062an/-/settings/integrations)
+Custom enforce_rate_limit() function (in booking.py) uses time.sleep() to ensure API calls are spaced out, preventing the client from overloading external servers.
 
-## Collaborate with your team
+Ensures compliance with external API usage policies and avoids 5xx server errors.
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
+Asynchronous Processing
 
-## Test and Deploy
+The Tkinter GUI uses the threading module to run all API calls (showCurrentSlots, reserveEarliestSlot, etc.) in background threads.
 
-Use the built-in continuous integration in GitLab.
+Maintains UI responsiveness and prevents the application from freezing ("blocking") while waiting for slow network responses.
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+Robust API Wrapper
 
-***
+ReservationApi class (in reservationapi.py) handles all external communication.
 
-# Editing this README
+Automatically retries requests on server errors (5xx) and converts specific HTTP status codes (400, 401, 409) into descriptive Python exceptions (e.g., SlotUnavailableError).
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+Client-Side Caching
 
-## Suggestions for a good README
+Implemented in ReservationApi to store the results of recent API calls (e.g., get_slots_held).
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+Reduces unnecessary network traffic and speeds up subsequent requests for static data, improving application performance.
 
-## Name
-Choose a self-explaining name for your project.
+Project Structure
+.
+├── api.ini              <-- Configuration file for API URLs, keys, and global settings (retries, delay).
+├── booking.py           <-- Main application logic, multi-threading, atomic rollback, and Tkinter GUI.
+├── reservationapi.py    <-- The REST API wrapper class with retry and caching logic.
+└── exceptions.py        <-- Custom exception classes for specific API errors (400, 401, 409, 451).
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+Getting Started
+Prerequisites
+Python 3.8+
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+The requests and simplejson libraries.
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+pip install requests simplejson
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+Configuration
+Ensure you have an api.ini file in the project root with the necessary URL and key structure (simulating the external Hotel and Band services):
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+[global]
+retries = 3
+delay = 0.2
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+[hotel]
+url = <YOUR_HOTEL_API_BASE_URL>
+key = <YOUR_HOTEL_API_KEY>
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+[band]
+url = <YOUR_BAND_API_BASE_URL>
+key = <YOUR_BAND_API_KEY>
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+Running the Application
+Execute the main application file from your terminal:
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+python3 booking.py
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+Key Logic: Atomic Rollback
+The reserveSlot function is designed to enforce atomicity for reservations requiring both services.
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+Attempt Reservation: Tries to reserve Hotel first, then Band.
 
-## License
-For open source projects, say how it is licensed.
+Failure Check: If the Band reservation fails after the Hotel succeeded, the except block is triggered.
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+Rollback: The logic immediately calls hotel.release_slot(num) to cancel the successful Hotel reservation, returning the system to a clean, consistent state. This prevents the user from holding a partial reservation.
+
+Author: a38062an (Anthony Nguyen)
+Course: COMP28112 Advanced Computing Lab
+Last Updated: October 2025

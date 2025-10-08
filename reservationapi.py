@@ -5,7 +5,7 @@ provides automatic retries for server-side errors, delays to prevent
 server overloading, and produces sensible exceptions for the different
 types of client-side error that can be encountered.
 """
-from cgitb import reset
+#from cgitb import reset
 from urllib.parse import urljoin
 
 # This file contains areas that need to be filled in with your own
