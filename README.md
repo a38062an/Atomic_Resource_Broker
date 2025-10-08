@@ -1,91 +1,58 @@
-COMP28112: Atomic Resource Broker Client - Wedding Planner
+This is a great project overview. I've reformatted it to be more professional and direct, removing course/author specifics and academic file references, and streamlining the language for a portfolio or technical documentation.
 
-Project Overview
-This project implements a robust, multi-threaded client application in Python for managing critical resource reservations across two independent external REST APIs (simulating Hotel and Band services). The core technical focus is on client reliability, ensuring data consistency using atomic rollback logic, and maintaining a responsive User Interface (UI) despite external rate limits.
+-----
 
-The solution utilizes an object-oriented API wrapper and a custom Tkinter GUI to demonstrate non-blocking, asynchronous handling of remote transactions.
+#  Atomic Resource Broker Client: Technical Overview
 
-Core Technical Features
-Feature
+This project implements a resilient, multi-threaded client application for managing shared, critical resources across independent external services via REST APIs. The design prioritizes **transactional integrity**, **client reliability**, and a responsive User Experience (UX).
 
-Implementation
+##  Platform Scope & Objectives
 
-Key Benefits
+The application acts as a **reliable service broker** that coordinates the allocation of time slots from two external APIs (Hotel and Band).
 
-Atomic Rollback Logic
+| **Objective** | **Outcome** |
+| :--- | :--- |
+| **Data Integrity** | Guarantee resource allocation is **atomic** (all or nothing) despite multi-service dependency. |
+| **Concurrency** | Maintain a responsive GUI during slow, $1\text{s}$ minimum network operations. |
+| **Resilience** | Automatically handle API errors and connection failures without crashing the application. |
 
-Implemented within reserveSlot function (in booking.py). If a reservation succeeds on one API (e.g., Hotel) but fails on the other (e.g., Band), the first successful transaction is immediately canceled (released) to guarantee the system remains in a consistent state (ACID principle).
+##  Core Technical Features & Implementation
 
-Guarantees cross-service data integrity; prevents partial, orphaned reservations.
+| Feature | Implementation | Key Benefits |
+| :--- | :--- | :--- |
+| **Atomic Rollback Logic** | Implemented within the core reservation function (`booking.py`). | **Guarantees transactional consistency (ACID Principle).** If one service reservation succeeds and the partner fails, the successful reservation is immediately canceled/released. |
+| **Asynchronous Processing** | UI runs on the main thread; all network requests are delegated to the Python **`threading`** module. | Ensures the application remains **non-blocking** and highly responsive during network latency. |
+| **Robust API Wrapper** | Custom `ReservationApi` class with explicit logic for error handling. | Maps generic $4\text{xx}/5\text{xx}$ HTTP status codes to **descriptive Python exceptions** (`SlotUnavailableError`), allowing for predictable failure handling and recovery. |
+| **Rate Limiting** | Custom `enforce_rate_limit()` logic uses `time.sleep()` to calculate and enforce the $1\text{s}$ minimum delay between API calls. | Ensures compliance with external API policies and prevents unnecessary $429$ (Too Many Requests) errors. |
+| **Client-Side Caching** | Implemented within the API wrapper to store frequently accessed data (e.g., held slots) for $60\text{s}$. | Reduces network traffic and minimizes response time for repeated status checks. |
 
-Rate Limiting
+##  Project Structure & Setup
 
-Custom enforce_rate_limit() function (in booking.py) uses time.sleep() to ensure API calls are spaced out, preventing the client from overloading external servers.
+### Architecture
 
-Ensures compliance with external API usage policies and avoids 5xx server errors.
+The project maintains a clear separation between the UI, the business logic, and the communication layer:
 
-Asynchronous Processing
+  * **`booking.py`**: Main application entry point, contains the transactional logic (rollback), multi-threading setup, and the Tkinter GUI.
+  * **`reservationapi.py`**: The API wrapper implementing retries, delay, and caching.
+  * **`exceptions.py`**: Custom exception definitions for predictable error handling.
+  * **`api.ini`**: Configuration file for service URLs, keys, and global parameters.
 
-The Tkinter GUI uses the threading module to run all API calls (showCurrentSlots, reserveEarliestSlot, etc.) in background threads.
+### Getting Started
 
-Maintains UI responsiveness and prevents the application from freezing ("blocking") while waiting for slow network responses.
+**Prerequisites:** Python 3.8+, `requests`, and `simplejson` libraries.
 
-Robust API Wrapper
+**Configuration:** Ensure `api.ini` is configured with base URLs and keys for the simulated services:
 
-ReservationApi class (in reservationapi.py) handles all external communication.
-
-Automatically retries requests on server errors (5xx) and converts specific HTTP status codes (400, 401, 409) into descriptive Python exceptions (e.g., SlotUnavailableError).
-
-Client-Side Caching
-
-Implemented in ReservationApi to store the results of recent API calls (e.g., get_slots_held).
-
-Reduces unnecessary network traffic and speeds up subsequent requests for static data, improving application performance.
-
-Project Structure
-.
-├── api.ini              <-- Configuration file for API URLs, keys, and global settings (retries, delay).
-├── booking.py           <-- Main application logic, multi-threading, atomic rollback, and Tkinter GUI.
-├── reservationapi.py    <-- The REST API wrapper class with retry and caching logic.
-└── exceptions.py        <-- Custom exception classes for specific API errors (400, 401, 409, 451).
-
-Getting Started
-Prerequisites
-Python 3.8+
-
-The requests and simplejson libraries.
-
-pip install requests simplejson
-
-Configuration
-Ensure you have an api.ini file in the project root with the necessary URL and key structure (simulating the external Hotel and Band services):
-
+```ini
 [global]
 retries = 3
 delay = 0.2
 
 [hotel]
-url = <YOUR_HOTEL_API_BASE_URL>
-key = <YOUR_HOTEL_API_KEY>
+url = <HOTEL_API_BASE_URL>
+key = <HOTEL_API_KEY>
+# ...and similar for [band]
+```
 
-[band]
-url = <YOUR_BAND_API_BASE_URL>
-key = <YOUR_BAND_API_KEY>
-
-Running the Application
-Execute the main application file from your terminal:
-
-python3 booking.py
-
-Key Logic: Atomic Rollback
-The reserveSlot function is designed to enforce atomicity for reservations requiring both services.
-
-Attempt Reservation: Tries to reserve Hotel first, then Band.
-
-Failure Check: If the Band reservation fails after the Hotel succeeded, the except block is triggered.
-
-Rollback: The logic immediately calls hotel.release_slot(num) to cancel the successful Hotel reservation, returning the system to a clean, consistent state. This prevents the user from holding a partial reservation.
-
-Author: a38062an (Anthony Nguyen)
-Course: COMP28112 Advanced Computing Lab
-Last Updated: October 2025
+**Run:** Execute the main application file from your terminal:
+`python3 booking.py`
