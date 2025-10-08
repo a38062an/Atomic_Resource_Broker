@@ -1,7 +1,3 @@
-This is a great project overview. I've reformatted it to be more professional and direct, removing course/author specifics and academic file references, and streamlining the language for a portfolio or technical documentation.
-
------
-
 #  Atomic Resource Broker Client: Technical Overview
 
 This project implements a resilient, multi-threaded client application for managing shared, critical resources across independent external services via REST APIs. The design prioritizes **transactional integrity**, **client reliability**, and a responsive User Experience (UX).
