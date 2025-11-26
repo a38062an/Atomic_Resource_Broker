@@ -1,54 +1,43 @@
-#  Atomic Resource Broker Client: Technical Overview
+# Atomic Resource Broker
 
-This project implements a resilient, multi-threaded client application for managing shared, critical resources across independent external services via REST APIs. The design prioritizes **transactional integrity**, **client reliability**, and a responsive User Experience (UX).
+This is a client application I built to manage shared resources across two different services (Hotel and Band). The main goal is to make sure we either get slots from *both* services or *neither*—no half-bookings allowed.
 
-##  Platform Scope & Objectives
+## How It Works
 
-The application acts as a **reliable service broker** that coordinates the allocation of time slots from two external APIs (Hotel and Band).
+The app talks to two external APIs. Since these APIs can be slow or unreliable, I built the client to be robust:
+*   **Atomic Transactions**: If I book a hotel but the band fails, the app automatically cancels the hotel to keep things clean.
+*   **No Freezing**: The UI runs separately from the network calls (using threading), so the window doesn't hang while waiting for the server.
+*   **Rate Limiting**: It respects the 1-second delay rule so we don't get blocked by the server.
 
-| **Objective** | **Outcome** |
-| :--- | :--- |
-| **Data Integrity** | Guarantee resource allocation is **atomic** (all or nothing) despite multi-service dependency. |
-| **Concurrency** | Maintain a responsive GUI during slow, $1\text{s}$ minimum network operations. |
-| **Resilience** | Automatically handle API errors and connection failures without crashing the application. |
+## Project Structure
 
-##  Core Technical Features & Implementation
+I split the code into a few files to keep it organized:
 
-| Feature | Implementation | Key Benefits |
-| :--- | :--- | :--- |
-| **Atomic Rollback Logic** | Implemented within the core reservation function (`booking.py`). | **Guarantees transactional consistency (ACID Principle).** If one service reservation succeeds and the partner fails, the successful reservation is immediately canceled/released. |
-| **Asynchronous Processing** | UI runs on the main thread; all network requests are delegated to the Python **`threading`** module. | Ensures the application remains **non-blocking** and highly responsive during network latency. |
-| **Robust API Wrapper** | Custom `ReservationApi` class with explicit logic for error handling. | Maps generic $4\text{xx}/5\text{xx}$ HTTP status codes to **descriptive Python exceptions** (`SlotUnavailableError`), allowing for predictable failure handling and recovery. |
-| **Rate Limiting** | Custom `enforce_rate_limit()` logic uses `time.sleep()` to calculate and enforce the $1\text{s}$ minimum delay between API calls. | Ensures compliance with external API policies and prevents unnecessary $429$ (Too Many Requests) errors. |
-| **Client-Side Caching** | Implemented within the API wrapper to store frequently accessed data (e.g., held slots) for $60\text{s}$. | Reduces network traffic and minimizes response time for repeated status checks. |
+*   **`booking_gui.py`**: This is the main file. Run this to start the app. It handles the GUI.
+*   **`booking_service.py`**: This is where the actual logic lives (finding slots, booking, cancelling).
+*   **`reservation_api.py`**: The wrapper that talks to the real servers.
+*   **`mock_reservation_api.py`**: A fake version of the API I wrote so you can test the app without needing a real server or API keys.
+*   **`config_manager.py`**: Handles loading the `api.ini` config file.
 
-##  Project Structure & Setup
+## How to Run
 
-### Architecture
+### 1. Demo Mode (No Keys Needed)
+If you just want to see it working, I added a demo mode. It uses a mock API that simulates the real thing.
 
-The project maintains a clear separation between the UI, the business logic, and the communication layer:
-
-  * **`booking.py`**: Main application entry point, contains the transactional logic (rollback), multi-threading setup, and the Tkinter GUI.
-  * **`reservationapi.py`**: The API wrapper implementing retries, delay, and caching.
-  * **`exceptions.py`**: Custom exception definitions for predictable error handling.
-  * **`api.ini`**: Configuration file for service URLs, keys, and global parameters.
-
-### Getting Started
-
-**Prerequisites:** Python 3.8+, `requests`, and `simplejson` libraries.
-
-**Configuration:** Ensure `api.ini` is configured with base URLs and keys for the simulated services:
-
-```ini
-[global]
-retries = 3
-delay = 0.2
-
-[hotel]
-url = <HOTEL_API_BASE_URL>
-key = <HOTEL_API_KEY>
-# ...and similar for [band]
+```bash
+python3 booking_gui.py --demo
 ```
 
-**Run:** Execute the main application file from your terminal:
-`python3 booking.py`
+### 2. Real Mode
+To use the real API, make sure you have your `api.ini` file set up with the URLs and keys, then run:
+
+```bash
+python3 booking_gui.py
+```
+
+### 3. CLI Test
+I also wrote a quick script to test the logic in the terminal without the GUI:
+
+```bash
+python3 demo.py
+```
